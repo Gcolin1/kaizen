@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { transactions, categories } from '../data/mockData';
 import { Transaction } from '../types';
+import TransactionModal from './TransactionModal';
 
 export default function CashFlow() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [modalType, setModalType] = useState<null | 'income' | 'expense'>(null);
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -26,6 +28,11 @@ export default function CashFlow() {
     
     return matchesSearch && matchesCategory && matchesType;
   });
+
+  const handleSubmit = (data: void) => {
+    console.log('Nova transação:', data);
+    setModalType(null);
+  };
 
   const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
@@ -43,14 +50,31 @@ export default function CashFlow() {
           <h1 className="text-3xl font-bold text-gray-900">Fluxo de Caixa</h1>
           <p className="text-gray-600 mt-1">Gerencie suas transações financeiras</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center space-x-2 mt-4 lg:mt-0"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nova Transação</span>
-        </button>
+        <div className="flex space-x-4 mt-4 lg:mt-0">
+          <button
+            onClick={() => setModalType('income')}
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nova Receita</span>
+          </button>
+          <button
+            onClick={() => setModalType('expense')}
+            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nova Despesa</span>
+          </button>
+        </div>
       </div>
+
+      {modalType && (
+        <TransactionModal
+          type={modalType}
+          onClose={() => setModalType(null)}
+          onSubmit={handleSubmit}
+        />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
