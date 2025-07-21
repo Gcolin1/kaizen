@@ -217,7 +217,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white">
+      {/*<div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
           <div className="mb-6 lg:mb-0">
             <h2 className="text-2xl font-bold mb-2">Organize suas finanças</h2>
@@ -236,7 +236,7 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-      </div>
+      </div>*/}
     </div>
   );
 }
