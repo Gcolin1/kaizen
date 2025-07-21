@@ -67,10 +67,8 @@ export default function Calculator() {
     const { goalAmount, interestRate, timeInMonths } = values;
     const monthlyRate = interestRate / 100 / 12;
     
-    // Calculate required monthly investment
     const requiredMonthly = goalAmount * monthlyRate / (Math.pow(1 + monthlyRate, timeInMonths) - 1);
     
-    // Generate projection
     let totalAmount = 0;
     let totalInvested = 0;
     const monthlyData = [];
@@ -105,8 +103,8 @@ export default function Calculator() {
 
   const calculatorTypes = [
     { id: 'compound', name: 'Juros Compostos', icon: TrendingUp },
-    { id: 'goal', name: 'Meta Financeira', icon: Target },
-    { id: 'retirement', name: 'Aposentadoria', icon: PiggyBank },
+    //{ id: 'goal', name: 'Meta Financeira', icon: Target },
+    //{ id: 'retirement', name: 'Aposentadoria', icon: PiggyBank },
   ];
 
   return (

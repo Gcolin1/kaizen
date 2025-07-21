@@ -44,21 +44,19 @@ export default function Settings() {
     setIsLoading(true);
     setMessage(null);
 
-    // Simular salvamento
     setTimeout(() => {
       setIsLoading(false);
       setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
       
-      // Limpar mensagem após 3 segundos
       setTimeout(() => setMessage(null), 3000);
     }, 1000);
   };
 
   const tabs = [
     { id: 'profile', name: 'Perfil', icon: User },
-    { id: 'notifications', name: 'Notificações', icon: Bell },
-    { id: 'security', name: 'Segurança', icon: Shield },
-    { id: 'billing', name: 'Cobrança', icon: CreditCard },
+    //{ id: 'notifications', name: 'Notificações', icon: Bell },
+    //{ id: 'security', name: 'Segurança', icon: Shield },
+    //{ id: 'billing', name: 'Cobrança', icon: CreditCard },
   ];
 
   return (
