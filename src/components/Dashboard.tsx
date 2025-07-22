@@ -10,7 +10,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import { transactions, investments, chartData } from '../data/mockData';
+import { transactions, investments} from '../data/mockData';
 import TransactionModal from './TransactionModal';
 
 export default function Dashboard() {
@@ -133,9 +133,6 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">Transações Recentes</h2>
-            <button className="text-purple-600 hover:text-purple-700 font-medium text-sm">
-              Ver todas
-            </button>
           </div>
           
           <div className="space-y-4">
@@ -175,9 +172,6 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">Melhores Investimentos</h2>
-            <button className="text-purple-600 hover:text-purple-700 font-medium text-sm">
-              Ver todos
-            </button>
           </div>
           
           <div className="space-y-4">
