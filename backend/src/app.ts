@@ -67,6 +67,28 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Test Supabase connection
+app.get('/test-db', async (req, res) => {
+  try {
+    const { supabase } = require('./config/database');
+    const { data, error } = await supabase.from('users').select('count').single();
+    
+    if (error) throw error;
+    
+    res.status(200).json({
+      success: true,
+      message: 'Supabase connection working!',
+      data
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Supabase connection failed',
+      error: error.message
+    });
+  }
+});
+
 // Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
