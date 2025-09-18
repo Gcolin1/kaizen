@@ -7,15 +7,15 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 // Importar rotas
-import authRoutes from '@routes/auth';
-import transactionRoutes from '@routes/transactions';
-import investmentRoutes from '@routes/investments';
-import analyticsRoutes from '@routes/analytics';
-import categoryRoutes from '@routes/categories';
+import authRoutes from './routes/auth';
+import transactionRoutes from './routes/transactions';
+import investmentRoutes from './routes/investments';
+import analyticsRoutes from './routes/analytics';
+import categoryRoutes from './routes/categories';
 
 // Importar middlewares
-import { errorHandler } from '@middleware/errorHandler';
-import { notFound } from '@middleware/notFound';
+import { errorHandler } from './middleware/errorHandler';
+import { notFound } from './middleware/notFound';
 
 dotenv.config();
 
