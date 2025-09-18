@@ -1,5 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
+import { fetch, Headers, Request, Response } from 'undici'
+
+// Polyfill para Node.js
+if (!globalThis.fetch) {
+  globalThis.fetch = fetch as any
+  globalThis.Headers = Headers as any
+  globalThis.Request = Request as any
+  globalThis.Response = Response as any
+}
 
 dotenv.config()
 
