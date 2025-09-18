@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -10,30 +10,71 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import { transactions, investments} from '../data/mockData';
+import { analyticsApi, transactionsApi, investmentsApi } from '../services/api';
 import TransactionModal from './TransactionModal';
 
 export default function Dashboard() {
   const currentMonth = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
   const [modalType, setModalType] = useState<null | 'income' | 'expense'>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  const totalExpense = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [summaryResponse, transactionsResponse, investmentsResponse] = await Promise.all([
+        analyticsApi.getSummary(),
+        transactionsApi.getAll({ limit: 5 }),
+        investmentsApi.getAll()
+      ]);
 
-  const balance = totalIncome - totalExpense;
-  const topInvestments = investments.slice(0, 3);
-  const recentTransactions = transactions.slice(0, 5);
+      if (summaryResponse.success) {
+        setSummary(summaryResponse.data);
+      }
 
-  const handleSubmit = (data: void) => {
-    console.log('Nova transação:', data);
-    setModalType(null);
+      if (transactionsResponse.success) {
+        setRecentTransactions(transactionsResponse.data?.transactions || []);
+      }
+
+      if (investmentsResponse.success) {
+        setInvestments(investmentsResponse.data?.slice(0, 3) || []);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const totalIncome = summary?.financial?.totalIncome || 0;
+  const totalExpense = summary?.financial?.totalExpense || 0;
+  const balance = summary?.financial?.balance || 0;
+  const topInvestments = investments;
+
+  const handleSubmit = async (data: any) => {
+    try {
+      await transactionsApi.create(data);
+      loadDashboardData(); // Reload data after adding transaction
+      setModalType(null);
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

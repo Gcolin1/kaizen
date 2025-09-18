@@ -1,0 +1,229 @@
+import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { validationResult } from 'express-validator';
+import { ApiResponse, LoginRequest, RegisterRequest } from '../types/index';
+import { UserService } from '../services/userService';
+
+export const login = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Dados inválidos',
+        errors: errors.array().map(err => err.msg),
+      };
+      return res.status(400).json(response);
+    }
+
+    const { email, password }: LoginRequest = req.body;
+
+    // Buscar usuário
+    const user = await UserService.getUserByEmail(email);
+    if (!user) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Email ou senha incorretos',
+      };
+      return res.status(401).json(response);
+    }
+
+    // Verificar senha
+    const isValidPassword = await UserService.validatePassword(password, user.password_hash);
+    if (!isValidPassword) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Email ou senha incorretos',
+      };
+      return res.status(401).json(response);
+    }
+
+    // Gerar token JWT
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { 
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d' 
+      }
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Login realizado com sucesso',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          companyName: user.company_name,
+          cnpj: user.tax_id,
+          role: user.role,
+          createdAt: user.created_at
+        },
+        token,
+      },
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Erro no login:', error);
+    const response: ApiResponse = {
+      success: false,
+      message: 'Erro interno do servidor',
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const register = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Dados inválidos',
+        errors: errors.array().map(err => err.msg),
+      };
+      return res.status(400).json(response);
+    }
+
+    const { email, password, companyName, cnpj }: RegisterRequest = req.body;
+
+    // Verificar se email já existe
+    const existingUser = await UserService.getUserByEmail(email);
+    if (existingUser) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Este email já está cadastrado',
+      };
+      return res.status(409).json(response);
+    }
+
+    // Criar novo usuário
+    const newUser = await UserService.createUser({
+      email,
+      password,
+      company_name: companyName,
+      tax_id: cnpj,
+      role: 'administrator'
+    });
+
+    // Gerar token JWT
+    const token = jwt.sign(
+      { 
+        userId: newUser.id, 
+        email: newUser.email, 
+        role: newUser.role 
+      },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { 
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d' 
+      }
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Conta criada com sucesso! Bem-vindo ao Kaizen!',
+      data: {
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          companyName: newUser.company_name,
+          cnpj: newUser.tax_id,
+          role: newUser.role,
+          createdAt: newUser.created_at
+        },
+        token,
+      },
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    console.error('Erro no registro:', error);
+    const response: ApiResponse = {
+      success: false,
+      message: (error as Error).message || 'Erro interno do servidor',
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Email inválido',
+        errors: errors.array().map(err => err.msg),
+      };
+      return res.status(400).json(response);
+    }
+
+    const { email } = req.body;
+
+    // Verificar se email existe (em produção, não revelar se existe)
+    const user = await UserService.getUserByEmail(email);
+    
+    // Por segurança, sempre retornar sucesso
+    const response: ApiResponse = {
+      success: true,
+      message: 'Se este email estiver cadastrado, você receberá um link de recuperação',
+    };
+
+    // Em produção, enviar email aqui
+    if (user) {
+      console.log(`Email de recuperação enviado para: ${email}`);
+      // TODO: Implementar envio de email
+    }
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Erro na recuperação de senha:', error);
+    const response: ApiResponse = {
+      success: false,
+      message: 'Erro interno do servidor',
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.userId;
+    
+    const user = await UserService.getUserById(userId);
+    if (!user) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Usuário não encontrado',
+      };
+      return res.status(404).json(response);
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Perfil recuperado com sucesso',
+      data: {
+        id: user.id,
+        email: user.email,
+        companyName: user.company_name,
+        cnpj: user.tax_id,
+        role: user.role,
+        createdAt: user.created_at
+      },
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error);
+    const response: ApiResponse = {
+      success: false,
+      message: 'Erro interno do servidor',
+    };
+    res.status(500).json(response);
+  }
+};

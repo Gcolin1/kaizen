@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -16,7 +16,7 @@ import {
   Area,
   AreaChart
 } from 'recharts';
-import { chartData, transactions, categories } from '../data/mockData';
+import { analyticsApi } from '../services/api';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -30,22 +30,55 @@ import {
 export default function Charts() {
   const [selectedPeriod, setSelectedPeriod] = useState('6months');
   const [selectedChart, setSelectedChart] = useState('bars');
+  const [chartData, setChartData] = useState([]);
+  const [categoryExpenses, setCategoryExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Calculate category expenses
-  const categoryExpenses = categories.map(category => {
-    const total = transactions
-      .filter(t => t.category === category.name && t.type === 'expense')
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    return {
-      name: category.name,
-      value: total,
-      color: category.color
-    };
-  }).filter(item => item.value > 0);
+  useEffect(() => {
+    loadAnalyticsData();
+  }, []);
 
-  const totalIncome = chartData.reduce((sum, item) => sum + item.income, 0);
-  const totalExpense = chartData.reduce((sum, item) => sum + item.expense, 0);
-  const averageBalance = chartData.reduce((sum, item) => sum + item.balance, 0) / chartData.length;
+  const loadAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      const [chartResponse, summaryResponse] = await Promise.all([
+        analyticsApi.getChartData(),
+        analyticsApi.getSummary()
+      ]);
+
+      console.log('Chart Response:', chartResponse);
+      console.log('Summary Response:', summaryResponse);
+      
+      if (chartResponse.success) {
+        setChartData(chartResponse.data?.chartData || []);
+      } else {
+        console.warn('Failed to load chart data:', chartResponse.message);
+        setChartData([]);
+      }
+
+      if (summaryResponse.success) {
+        const categoriesData = summaryResponse.data?.categories?.distribution || [];
+        // Transformar os dados do backend para o formato esperado pelos gráficos
+        const formattedCategories = categoriesData.map(cat => ({
+          name: cat.category_name,
+          value: Math.abs(cat.total_amount), // Usar valor absoluto
+          color: cat.category_color
+        }));
+        setCategoryExpenses(formattedCategories);
+      } else {
+        console.warn('Failed to load summary data:', summaryResponse.message);
+        setCategoryExpenses([]);
+      }
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalIncome = chartData.reduce((sum, item) => sum + (item?.income || 0), 0);
+  const totalExpense = chartData.reduce((sum, item) => sum + (item?.expenses || item?.expense || 0), 0);
+  const averageBalance = chartData.length > 0 ? chartData.reduce((sum, item) => sum + (item?.balance || 0), 0) / chartData.length : 0;
 
   const chartTypes = [
     { id: 'bars', name: 'Barras', icon: BarChart3 },
@@ -53,6 +86,14 @@ export default function Charts() {
     { id: 'area', name: 'Área', icon: Activity },
     { id: 'pie', name: 'Pizza', icon: PieChartIcon },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -128,7 +169,7 @@ export default function Charts() {
             <div>
               <p className="text-gray-600 text-sm font-medium">Taxa de Economia</p>
               <p className="text-2xl font-bold text-blue-600 mt-1">
-                {((totalIncome - totalExpense) / totalIncome * 100).toFixed(1)}%
+                {totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome * 100).toFixed(1) : '0.0'}%
               </p>
             </div>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -175,7 +216,7 @@ export default function Charts() {
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               {selectedChart === 'bars' && (
-                <BarChart data={chartData}>
+                <BarChart data={chartData || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
@@ -195,7 +236,7 @@ export default function Charts() {
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar 
-                    dataKey="expense" 
+                    dataKey="expenses" 
                     fill="url(#redGradient)" 
                     name="Despesas" 
                     radius={[4, 4, 0, 0]}
@@ -214,7 +255,7 @@ export default function Charts() {
               )}
               
               {selectedChart === 'line' && (
-                <LineChart data={chartData}>
+                <LineChart data={chartData || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
@@ -245,7 +286,7 @@ export default function Charts() {
               )}
               
               {selectedChart === 'area' && (
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
@@ -268,7 +309,7 @@ export default function Charts() {
                   />
                   <Area 
                     type="monotone" 
-                    dataKey="expense" 
+                    dataKey="expenses" 
                     stackId="2"
                     stroke="#ef4444" 
                     fill="url(#redAreaGradient)"
@@ -288,30 +329,36 @@ export default function Charts() {
               )}
               
               {selectedChart === 'pie' && (
-                <PieChart>
-                  <Pie
-                    data={categoryExpenses}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={120}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {categoryExpenses.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                </PieChart>
+                categoryExpenses && categoryExpenses.length > 0 ? (
+                  <PieChart>
+                    <Pie
+                      data={categoryExpenses}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {categoryExpenses.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                  </PieChart>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <p>Nenhum dado de categoria disponível</p>
+                  </div>
+                )
               )}
             </ResponsiveContainer>
           </div>
@@ -321,20 +368,27 @@ export default function Charts() {
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Gastos por Categoria</h2>
           <div className="space-y-4">
-            {categoryExpenses.map((category) => (
-              <div key={category.name} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div 
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span className="font-medium text-gray-900">{category.name}</span>
+            {categoryExpenses && categoryExpenses.length > 0 ? (
+              categoryExpenses.map((category) => (
+                <div key={category.name} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div 
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <span className="font-medium text-gray-900">{category.name}</span>
+                  </div>
+                  <span className="font-bold text-gray-900">
+                    R$ {(category?.value || 0).toLocaleString('pt-BR')}
+                  </span>
                 </div>
-                <span className="font-bold text-gray-900">
-                  R$ {category.value.toLocaleString('pt-BR')}
-                </span>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <p>Nenhum dado de categoria encontrado</p>
+                <p className="text-sm text-gray-400 mt-1">Adicione algumas transações para ver os gráficos</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -342,28 +396,34 @@ export default function Charts() {
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Comparação Mensal</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.slice(-3)} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" stroke="#6b7280" />
-                <YAxis dataKey="month" type="category" stroke="#6b7280" />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Bar dataKey="balance" fill="url(#purpleBarGradient)" radius={[0, 4, 4, 0]} />
-                <defs>
-                  <linearGradient id="purpleBarGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#8b5cf6" />
-                    <stop offset="100%" stopColor="#ec4899" />
-                  </linearGradient>
-                </defs>
-              </BarChart>
-            </ResponsiveContainer>
+            {chartData && chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData.slice(-3)} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" stroke="#6b7280" />
+                  <YAxis dataKey="month" type="category" stroke="#6b7280" />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar dataKey="balance" fill="url(#purpleBarGradient)" radius={[0, 4, 4, 0]} />
+                  <defs>
+                    <linearGradient id="purpleBarGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#ec4899" />
+                    </linearGradient>
+                  </defs>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Nenhum dado disponível para comparação</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

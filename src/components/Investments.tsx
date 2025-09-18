@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PiggyBank, 
   TrendingUp, 
@@ -11,13 +11,58 @@ import {
   Clock,
   DollarSign
 } from 'lucide-react';
-import { investments } from '../data/mockData';
+import { investmentsApi } from '../services/api';
+import { Investment } from '../types';
 
 export default function Investments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRisk, setSelectedRisk] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
-  const [sortBy, setSortBy] = useState('yield');
+  const [sortBy, setSortBy] = useState('return_rate');
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [userInvestments, setUserInvestments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadInvestmentsData();
+  }, []);
+
+  const loadInvestmentsData = async () => {
+    try {
+      setLoading(true);
+      const [investmentsResponse, userInvestmentsResponse] = await Promise.all([
+        investmentsApi.getAll(),
+        investmentsApi.getUserInvestments()
+      ]);
+
+      if (investmentsResponse.success) {
+        setInvestments(investmentsResponse.data || []);
+      }
+
+      if (userInvestmentsResponse.success) {
+        setUserInvestments(userInvestmentsResponse.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading investments data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInvest = async (investmentId: string, amount: number) => {
+    try {
+      await investmentsApi.invest({
+        investmentId,
+        investedAmount: amount,
+        startDate: new Date().toISOString().split('T')[0],
+        expectedEndDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
+        expectedReturn: amount * 1.1 // Simple 10% return calculation
+      });
+      loadInvestmentsData(); // Reload data
+    } catch (error) {
+      console.error('Error investing:', error);
+    }
+  };
 
   const filteredInvestments = investments
     .filter(investment => {

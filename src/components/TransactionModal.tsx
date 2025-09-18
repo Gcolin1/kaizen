@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { categoriesApi } from '../services/api';
 
 interface TransactionData {
   amount: number;
@@ -8,7 +9,7 @@ interface TransactionData {
   type: 'income' | 'expense';
   client: string;
   status?: 'pago' | 'credito';
-  category?: string;
+  categoryId?: string; // ID da categoria
   name?: string;
   provider?: string;
 }
@@ -28,27 +29,49 @@ const paymentMethods = [
   'Pix'
 ];
 
-const expenseCategories = [
-  'Serviços públicos',
-  'Compra de produtos e insumos',
-  'Aluguel',
-  'Folha de pagamento'
-];
-
 export default function TransactionModal({ type, onClose, onSubmit }: TransactionModalProps) {
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [method, setMethod] = useState('');
   const [client, setClient] = useState('');
   const [status, setStatus] = useState<'pago' | 'credito'>('pago');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [name, setName] = useState('');
   const [provider, setProvider] = useState('');
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submittedData, setSubmittedData] = useState<TransactionData | null>(null);
 
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const response = await categoriesApi.getAll();
+      console.log('Categorias:', response);
+
+      if (response.success && Array.isArray(response.data)) {
+        setCategories(response.data); // ✅ popula o dropdown
+      }
+    } catch (err) {
+      console.error('Erro ao carregar categorias:', err);
+    }
+  };
+
   const handleSubmit = () => {
-    if (!amount || !date || (status === 'pago' && !method)) return;
+    if (!amount || !date || !categoryId || (status === 'pago' && !method)) return;
+
+    // Criar descrição baseada nos dados do formulário
+    let description = '';
+    if (type === 'expense') {
+      description = name || provider || 'Despesa';
+      if (provider && name) {
+        description = `${name} - ${provider}`;
+      }
+    } else {
+      description = client || 'Receita';
+    }
 
     const transaction: TransactionData = {
       amount,
@@ -57,13 +80,24 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
       type,
       client,
       status,
-      category,
+      categoryId,
       name,
       provider
     };
 
-    console.log('Dados enviados:', transaction);
-    setSubmittedData(transaction);
+    // Dados para API seguindo validação do backend
+    const apiData = {
+      amount,
+      description,
+      date,
+      category: categoryId, // Backend espera 'category', não 'categoryId'
+      type,
+      paymentMethod: method, // Incluindo método de pagamento
+      status // Incluindo status da transação
+    };
+
+    console.log('Dados enviados para API:', apiData);
+    setSubmittedData(apiData as any);
     setShowSuccess(true);
   };
 
@@ -80,10 +114,10 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
             <X className="w-5 h-5" />
           </button>
-          <h2 className="text-lg font-semibold mb-4 flex items-center space-x-2">
-            <span>{type === 'income' ? 'Criar Receita' : 'Nova despesa'}</span>
-          </h2>
 
+          <h2 className="text-lg font-semibold mb-4">{type === 'income' ? 'Criar Receita' : 'Nova despesa'}</h2>
+
+          {/* Status: Pago / Crédito */}
           <div className="flex space-x-2 mb-4">
             <button
               onClick={() => setStatus('pago')}
@@ -99,7 +133,10 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
             </button>
           </div>
 
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data do {type === 'income' ? 'recebimento' : 'gasto'}*</label>
+          {/* Data */}
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Data do {type === 'income' ? 'recebimento' : 'gasto'}*
+          </label>
           <input
             type="date"
             value={date}
@@ -107,22 +144,26 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
             className="w-full mb-4 px-4 py-2 border rounded-lg"
           />
 
-          {type === 'expense' && (
-            <>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria da despesa*</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full mb-4 px-4 py-2 border rounded-lg"
-              >
-                <option value="">Selecione uma categoria</option>
-                {expenseCategories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </>
-          )}
+          {/* Categoria */}
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Categoria {type === 'expense' ? 'da despesa' : 'da receita'}*
+          </label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full mb-4 px-4 py-2 border rounded-lg"
+          >
+            <option value="">Selecione uma categoria</option>
+            {categories
+              .filter(cat => cat.type === type || cat.type === 'both')
+              .map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+          </select>
 
+          {/* Valor */}
           <label className="block text-sm font-medium text-gray-700 mb-1">Valor*</label>
           <input
             type="number"
@@ -131,6 +172,7 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
             className="w-full mb-4 px-4 py-2 border rounded-lg"
           />
 
+          {/* Nome e fornecedor (despesa) */}
           {type === 'expense' && (
             <>
               <label className="block text-sm font-medium text-gray-700 mb-1">Deseja dar um nome a este gasto?</label>
@@ -151,6 +193,7 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
             </>
           )}
 
+          {/* Método de pagamento */}
           {status === 'pago' && (
             <>
               <label className="block text-sm font-medium text-gray-700 mb-1">Selecione o método de pagamento*</label>
@@ -168,6 +211,7 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
             </>
           )}
 
+          {/* Cliente (receita) */}
           {type === 'income' && (
             <>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cliente (opcional)</label>
@@ -180,16 +224,18 @@ export default function TransactionModal({ type, onClose, onSubmit }: Transactio
             </>
           )}
 
+          {/* Botão Criar */}
           <button
             onClick={handleSubmit}
-            disabled={!amount || !date || (status === 'pago' && !method)}
-            className={`w-full py-3 rounded-lg font-semibold text-white ${(!amount || !date || (status === 'pago' && !method)) ? 'bg-gray-300' : 'bg-black hover:bg-gray-800'}`}
+            disabled={!amount || !date || !categoryId || (status === 'pago' && !method)}
+            className={`w-full py-3 rounded-lg font-semibold text-white ${(!amount || !date || !categoryId || (status === 'pago' && !method)) ? 'bg-gray-300' : 'bg-black hover:bg-gray-800'}`}
           >
             Criar {type === 'income' ? 'Receita' : 'Despesa'}
           </button>
         </div>
       </div>
 
+      {/* Modal de sucesso */}
       {showSuccess && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white px-6 py-5 rounded-xl shadow-xl text-center max-w-sm w-full">
