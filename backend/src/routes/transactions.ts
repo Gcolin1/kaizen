@@ -6,8 +6,8 @@ import {
   updateTransaction, 
   deleteTransaction,
   getTransactionById 
-} from '@controllers/transactionController';
-import { authenticateToken } from '@middleware/auth';
+} from '../controllers/transactionController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { getCategories, createCategory, updateCategory, deleteCategory } from '@controllers/categoryController';
-import { authenticateToken } from '@middleware/auth';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 

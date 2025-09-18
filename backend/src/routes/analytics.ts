@@ -4,8 +4,8 @@ import {
   getSummary, 
   getChartData, 
   getGoals 
-} from '@controllers/analyticsController';
-import { authenticateToken } from '@middleware/auth';
+} from '../controllers/analyticsController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 

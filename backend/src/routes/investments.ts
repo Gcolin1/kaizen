@@ -4,8 +4,8 @@ import {
   getInvestments, 
   getInvestmentById, 
   simulateInvestment 
-} from '@controllers/investmentController';
-import { authenticateToken } from '@middleware/auth';
+} from '../controllers/investmentController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
