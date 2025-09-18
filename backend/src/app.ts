@@ -39,9 +39,25 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('combined'));
 
-// CORS
+// CORS - aceitar múltiplas origens
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://kaizenfinance.vercel.app',
+  'https://kaizenfinance-7ijrzktwb-gcolin1s-projects.vercel.app'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Permitir requisições sem origin (mobile apps, etc)
+    if (!origin) return callback(null, true);
+    
+    // Verificar se a origin está na lista permitida ou é do Vercel
+    if (allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 
@@ -71,20 +87,31 @@ app.get('/health', (req, res) => {
 app.get('/test-db', async (req, res) => {
   try {
     const { supabase } = require('./config/database');
-    const { data, error } = await supabase.from('users').select('count').single();
     
-    if (error) throw error;
+    // Debug: verificar variáveis de ambiente
+    console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+    console.log('SUPABASE_SERVICE_KEY presente:', !!process.env.SUPABASE_SERVICE_KEY);
+    
+    // Teste simples: listar tabelas
+    const { data, error } = await supabase.from('users').select('*').limit(1);
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
     
     res.status(200).json({
       success: true,
       message: 'Supabase connection working!',
-      data
+      data: data || []
     });
   } catch (error: any) {
+    console.error('Database test error:', error);
     res.status(500).json({
       success: false,
       message: 'Supabase connection failed',
-      error: error.message
+      error: error.message,
+      code: error.code || 'UNKNOWN'
     });
   }
 });
