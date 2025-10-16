@@ -133,19 +133,6 @@ export default function Settings() {
                   </button>
                 </div>
 
-                <div className="flex items-center space-x-6">
-                  <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                    <User className="w-10 h-10 text-white" />
-                  </div>
-                  <div className="space-y-2">
-                    <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2">
-                      <Upload className="w-4 h-4" />
-                      <span>Alterar Foto</span>
-                    </button>
-                    <p className="text-gray-500 text-sm">JPG, PNG até 2MB</p>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
